@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import api from '../api'  // make sure this path is correct (adjust if needed)
+import api from "../services/api";
 
 export default function Documents() {
   const [docs, setDocs] = useState([])

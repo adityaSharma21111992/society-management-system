@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { getAuth } from "../services/auth";
+import Nav from '../components/Nav';
 
-const auth = getAuth();
-const currentUserId = Number(auth?.id) || null;
-const currentUserRole = auth?.role;
-const currentUserEmail = auth?.email;
 
 export default function Payments() {
-  // Form (Add / Edit)
+  const navigate = useNavigate();
+
+  // ------------------- AUTH -------------------
+  const auth = getAuth();
+  const token = auth?.token;
+  const currentUserId = Number(auth?.id);
+  const currentUserRole = auth?.role;
+  const currentUserEmail = auth?.email;
+
+  useEffect(() => {
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [token, navigate]);
+
+  // ------------------- STATE -------------------
   const initialForm = {
     payment_id: null,
     flat_id: "",
@@ -24,33 +37,38 @@ export default function Payments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Data
   const [payments, setPayments] = useState([]);
   const [flats, setFlats] = useState([]);
   const [canDeletePayment, setCanDeletePayment] = useState(false);
 
-  // Filters & pagination (server-side)
   const [search, setSearch] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalPages: 1, total: 0, limit: 10 });
 
-  // Load data whenever filters/page change
+  // ------------------- DATA LOAD -------------------
   useEffect(() => {
-    loadPayments();
-  }, [search, month, year, page]);
+    if (token) loadPayments();
+  }, [search, month, year, page, token]);
 
   useEffect(() => {
-    loadFlats();
-    loadConfig();
-  }, []);
+    if (token) {
+      loadFlats();
+      loadConfig();
+    }
+  }, [token]);
 
-  // Load payments (server-side)
   const loadPayments = async () => {
     try {
       const res = await api.get("/payments", {
-        params: { search: search || "", month: month || "", year: year || "", page: page || 1, limit: 10 },
+        params: {
+          search: search || "",
+          month: month || "",
+          year: year || "",
+          page: page || 1,
+          limit: 10,
+        },
       });
       setPayments(res.data.data || []);
       setPagination(res.data.pagination || { totalPages: 1, total: 0, limit: 10 });
@@ -80,7 +98,7 @@ export default function Payments() {
     }
   };
 
-  // When user selects flat in modal, auto-fill amount
+  // ------------------- HANDLERS -------------------
   const handleFlatChange = (flatId) => {
     const selectedFlat = flats.find((f) => f.flat_id === parseInt(flatId));
     setForm({
@@ -90,7 +108,6 @@ export default function Payments() {
     });
   };
 
-  // Open modal for edit
   const openEditModal = (payment) => {
     setForm({
       payment_id: payment.payment_id,
@@ -105,7 +122,6 @@ export default function Payments() {
     setIsModalOpen(true);
   };
 
-  // Add / Update
   const handleSubmit = async () => {
     if (!form.flat_id || !form.amount || !form.month || !form.year || !form.paid_date) {
       alert("Please fill all required fields (Flat, Amount, Month, Year, Payment Date)");
@@ -122,7 +138,7 @@ export default function Payments() {
         year: parseInt(form.year),
         paid_date: form.paid_date,
         remark: form.remark,
-        user_id: currentUserId, // ✅ Added current user info
+        user_id: currentUserId,
       };
 
       if (form.payment_id) {
@@ -143,7 +159,6 @@ export default function Payments() {
     }
   };
 
-  // Delete (only allowed if config allows it)
   const deletePayment = async (payment_id) => {
     if (!window.confirm("Are you sure you want to delete this payment?")) return;
     try {
@@ -157,7 +172,6 @@ export default function Payments() {
     }
   };
 
-  // Download invoice
   const downloadInvoice = async (payment_id) => {
     try {
       const res = await api.post("/payments/invoice", { payment_id }, { responseType: "blob" });
@@ -175,31 +189,24 @@ export default function Payments() {
     }
   };
 
-  // Pagination controls
-  const goPrev = () => {
-    if (page > 1) setPage(page - 1);
-  };
-  const goNext = () => {
-    if (page < pagination.totalPages) setPage(page + 1);
-  };
+  // ------------------- PAGINATION -------------------
+  const goPrev = () => { if (page > 1) setPage(page - 1); };
+  const goNext = () => { if (page < pagination.totalPages) setPage(page + 1); };
 
-  // Reset page when filter/search changes
-  useEffect(() => {
-    setPage(1);
-  }, [search, month, year]);
+  useEffect(() => { setPage(1); }, [search, month, year]);
 
+  // ------------------- RENDER -------------------
   return (
-    <div className="container">
+    
+    <div className="container"><Nav />
+
       <div className="header">
         <h2>Payments</h2>
-        <div>
-          <button className="btn btn-add" onClick={() => { setForm(initialForm); setIsModalOpen(true); }}>
-            + Add Payment
-          </button>
-        </div>
+        <button className="btn btn-add" onClick={() => { setForm(initialForm); setIsModalOpen(true); }}>
+          + Add Payment
+        </button>
       </div>
 
-      {/* ✅ Logged-in user info */}
       <div style={{ marginBottom: "10px", color: "#666" }}>
         Logged in as <b>{currentUserRole || "User"}</b> ({currentUserEmail || "unknown"})
       </div>
@@ -226,7 +233,7 @@ export default function Payments() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Payments Table */}
       <div className="card table-card">
         <table className="table">
           <thead>
@@ -240,7 +247,6 @@ export default function Payments() {
               <th>Year</th>
               <th>Payment Date</th>
               <th>Remark</th>
-              {/* ✅ New columns */}
               <th>Created By</th>
               <th>Created At</th>
               <th>Updated By</th>
@@ -288,7 +294,7 @@ export default function Payments() {
         <button onClick={goNext} disabled={page >= (pagination.totalPages || 1)}>Next</button>
       </div>
 
-      {/* Modal: Add / Edit Payment */}
+      {/* Modal */}
       {isModalOpen && (
         <div className="modal">
           <div className="modal-content">

@@ -277,50 +277,154 @@ export const expensesReport = async (req, res) => {
 };
 
 // 3. User activity report
-export const userReport = async (req, res) => {
+/*export const userReport = async (req, res) => {
   try {
     const { user_id, month, year } = req.query;
+
+    // ---- SET YOUR SYSTEM ADMIN USER ID HERE ----
+    const SYSTEM_ADMIN_ID = 1;
+    // -------------------------------------------
 
     // Filters for users table
     const userFilter = user_id ? `WHERE u.user_id = ?` : "";
 
-    // Parameters array to avoid SQL injection
-    const params = [];
-    if (user_id) params.push(user_id);
+    const expenseWhereParts = [];
+    const expenseParams = [];
 
-    // Build month/year filters for expenses
-    const expenseFilters = [];
-    if (month) expenseFilters.push(`MONTH(e.date) = ${month}`);
-    if (year) expenseFilters.push(`YEAR(e.date) = ${year}`);
-    const expenseFilterClause = expenseFilters.length ? `AND ${expenseFilters.join(" AND ")}` : "";
+    // Month/year filters apply only for NON-ADMIN users
+    if (month) {
+      expenseWhereParts.push(`(MONTH(e.date) = ? OR e.created_by = ${SYSTEM_ADMIN_ID})`);
+      expenseParams.push(month);
+    }
+    if (year) {
+      expenseWhereParts.push(`(YEAR(e.date) = ? OR e.created_by = ${SYSTEM_ADMIN_ID})`);
+      expenseParams.push(year);
+    }
 
-    const [users] = await db.query(
-      `
-      SELECT 
-        u.user_id,
-        u.name,
-        IFNULL(SUM(p.amount_paid),0) AS total_payments,
+    const expenseWhere = expenseWhereParts.length
+      ? `WHERE ${expenseWhereParts.join(" AND ")}`
+      : "";
+
+    const mainParams = [];
+    if (user_id) mainParams.push(user_id);
+
+    // ---- Subquery: Payments ----
+    const paymentsSub = `
+      SELECT created_by AS user_id, IFNULL(SUM(amount_paid), 0) AS total_payments
+      FROM payments
+      GROUP BY created_by
+    `;
+
+    // ---- Subquery: Expenses with admin override ----
+    const expensesSub = `
+      SELECT
+        e.created_by AS user_id,
         IFNULL(SUM(e.amount),0) AS total_expenses,
         GROUP_CONCAT(DISTINCT CONCAT('Created by: ', uc.name) SEPARATOR ', ') AS expenses_created_by,
         GROUP_CONCAT(DISTINCT CONCAT('Updated by: ', uu.name) SEPARATOR ', ') AS expenses_updated_by
-      FROM users u
-      LEFT JOIN payments p ON u.user_id = p.created_by
-      LEFT JOIN expenses e ON u.user_id = e.created_by ${expenseFilterClause}
+      FROM expenses e
       LEFT JOIN users uc ON e.created_by = uc.user_id
       LEFT JOIN users uu ON e.updated_by = uu.user_id
-      ${userFilter}
-      GROUP BY u.user_id
-      ORDER BY u.name
-      `,
-      params
-    );
+      ${expenseWhere}
+      GROUP BY e.created_by
+    `;
 
-    res.json(users);
+    // ---- Main query ----
+    const sql = `
+      SELECT
+        u.user_id,
+        u.name,
+        COALESCE(p.total_payments, 0) AS total_payments,
+        COALESCE(e.total_expenses, 0) AS total_expenses,
+        e.expenses_created_by,
+        e.expenses_updated_by
+      FROM users u
+      LEFT JOIN (${paymentsSub}) p ON u.user_id = p.user_id
+      LEFT JOIN (${expensesSub}) e ON u.user_id = e.user_id
+      ${userFilter}
+      ORDER BY u.name
+    `;
+
+    const allParams = [...expenseParams, ...mainParams];
+    const [rows] = await db.query(sql, allParams);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("User report error:", err);
+    res.status(500).json({ error: "Failed to fetch user report" });
+  }
+};*/
+
+//new user avitiy report
+export const userReport = async (req, res) => {
+  try {
+    const { user_id, month, year } = req.query;
+
+    const userFilter = user_id ? `WHERE u.user_id = ?` : "";
+    const params = [];
+    if (user_id) params.push(user_id);
+
+    // Prepare optional month/year filter for expenses
+    let expenseFilter = "";
+    const expenseParams = [];
+    if (month && year) {
+      expenseFilter = "WHERE YEAR(e.date) = ? AND MONTH(e.date) = ?";
+      expenseParams.push(year, month);
+    }
+
+    // -------------------- PAYMENTS SUBQUERY --------------------
+    const paymentsSub = `
+      SELECT 
+        created_by AS user_id, 
+        IFNULL(SUM(amount_paid), 0) AS total_payments
+      FROM payments
+      GROUP BY created_by
+    `;
+
+    // -------------------- EXPENSES SUBQUERY --------------------
+    const expensesSub = `
+      SELECT
+        e.created_by AS user_id,
+        IFNULL(SUM(e.amount), 0) AS total_expenses,
+        GROUP_CONCAT(DISTINCT uc.name SEPARATOR ', ') AS expenses_created_by,
+        GROUP_CONCAT(DISTINCT uu.name SEPARATOR ', ') AS expenses_updated_by
+      FROM expenses e
+      LEFT JOIN users uc ON e.created_by = uc.user_id
+      LEFT JOIN users uu ON e.updated_by = uu.user_id
+      ${expenseFilter}
+      GROUP BY e.created_by
+    `;
+
+    // -------------------- MAIN QUERY --------------------
+    const sql = `
+      SELECT
+        u.user_id,
+        u.name,
+        COALESCE(p.total_payments, 0) AS total_payments,
+        COALESCE(e.total_expenses, 0) AS total_expenses,
+        e.expenses_created_by,
+        e.expenses_updated_by
+      FROM users u
+      LEFT JOIN (${paymentsSub}) p ON u.user_id = p.user_id
+      LEFT JOIN (${expensesSub}) e ON u.user_id = e.user_id
+      ${userFilter}
+      ORDER BY u.name
+    `;
+
+    const [rows] = await db.query(sql, [...params, ...expenseParams]);
+
+    return res.json(rows);
+
   } catch (err) {
     console.error("User report error:", err);
     res.status(500).json({ error: "Failed to fetch user report" });
   }
 };
+
+
+
+
+
 
 
 

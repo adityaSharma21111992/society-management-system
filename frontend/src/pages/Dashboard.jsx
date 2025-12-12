@@ -49,7 +49,7 @@ export default function Dashboard() {
 
   // ---------------- HELPERS ----------------
   const isAdmin = auth?.id === 'admin' || auth?.role === 'admin';
-  const BACKEND_URL = 'http://localhost:5000';
+  const BACKEND_URL = backendUrl || 'http://localhost:5000';
   const formatAmount = (amount) => Number(amount || 0).toFixed(2);
 
   // Last 3 months
@@ -69,9 +69,7 @@ export default function Dashboard() {
 
   const getPendingFlatsForMonth = (year, month) => {
     return (
-      dashboardData?.pendingFlatsByMonth?.[
-        `${year}-${String(month).padStart(2, '0')}`
-      ] || []
+      dashboardData?.pendingFlatsByMonth?.[`${year}-${String(month).padStart(2, '0')}`] || []
     );
   };
 
@@ -84,9 +82,7 @@ export default function Dashboard() {
     if (!selectedMonth || !selectedYear)
       return alert('Please select both month and year');
     window.open(
-      `${backendUrl}/api/reports/monthly?month=${encodeURIComponent(
-        selectedMonth
-      )}&year=${encodeURIComponent(selectedYear)}`,
+      `${backendUrl}/api/reports/monthly?month=${encodeURIComponent(selectedMonth)}&year=${encodeURIComponent(selectedYear)}`,
       '_blank'
     );
   };
@@ -102,6 +98,40 @@ export default function Dashboard() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
+  };
+
+  // ---------------- CHANGE PASSWORD ----------------
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  });
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword) {
+      return alert('Please fill all password fields');
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      return alert('New password and confirm password do not match');
+    }
+
+    setIsSubmittingPassword(true);
+    try {
+      await api.post('/users/change-password', {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      });
+      alert('Password changed successfully');
+      setIsChangePasswordOpen(false);
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
+    } catch (err) {
+      console.error('Password change error:', err);
+      alert(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setIsSubmittingPassword(false);
+    }
   };
 
   // ---------------- CONDITIONAL RENDER STATES ----------------
@@ -164,9 +194,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month_name" />
                 <YAxis />
-                <Tooltip
-                  formatter={(value) => `${currencySymbol} ${formatAmount(value)}`}
-                />
+                <Tooltip formatter={(value) => `${currencySymbol} ${formatAmount(value)}`} />
                 <Legend />
                 <Bar dataKey="total_income" fill="#0a84ff" name="Income" />
                 <Bar dataKey="total_expense" fill="#ff3b30" name="Expense" />
@@ -222,21 +250,11 @@ export default function Dashboard() {
         <div className="card actions-card">
           <h3>Quick Actions</h3>
           <div className="actions-buttons">
-            <button className="btn" onClick={() => navigate('/flats')}>
-              Manage Flats
-            </button>
-            <button className="btn" onClick={() => navigate('/payments')}>
-              Add Payment
-            </button>
-            <button className="btn" onClick={() => navigate('/expenses')}>
-              Add Expense
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => (window.location.href = '/UniqueReports')}
-            >
-              View Unique Reports
-            </button>
+            <button className="btn" onClick={() => navigate('/flats')}>Manage Flats</button>
+            <button className="btn" onClick={() => navigate('/payments')}>Add Payment</button>
+            <button className="btn" onClick={() => navigate('/expenses')}>Add Expense</button>
+            <button className="btn btn-secondary" onClick={() => (window.location.href = '/UniqueReports')}>View Unique Reports</button>
+            <button className="btn btn-secondary" onClick={() => setIsChangePasswordOpen(true)}>Change Password</button>
           </div>
         </div>
 
@@ -244,54 +262,76 @@ export default function Dashboard() {
         <div className="card reports-card">
           <h3>Reports</h3>
           <div className="actions-buttons">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option value={m} key={m}>
-                  {new Date(0, m - 1).toLocaleString('default', {
-                    month: 'long'
-                  })}
+                  {new Date(0, m - 1).toLocaleString('default', { month: 'long' })}
                 </option>
               ))}
             </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
               {Array.from({ length: 5 }, (_, i) => 2025 - i).map((y) => (
-                <option value={y} key={y}>
-                  {y}
-                </option>
+                <option value={y} key={y}>{y}</option>
               ))}
             </select>
-            <button className="btn" onClick={downloadMonthly}>
-              Download Monthly PDF
-            </button>
+            <button className="btn" onClick={downloadMonthly}>Download Monthly PDF</button>
 
-            <select
-              value={selectedYearly}
-              onChange={(e) => setSelectedYearly(e.target.value)}
-            >
+            <select value={selectedYearly} onChange={(e) => setSelectedYearly(e.target.value)}>
               {Array.from({ length: 5 }, (_, i) => 2025 - i).map((y) => (
-                <option value={y} key={y}>
-                  {y}
-                </option>
+                <option value={y} key={y}>{y}</option>
               ))}
             </select>
-            <button className="btn" onClick={downloadYearly}>
-              Download Yearly PDF
-            </button>
+            <button className="btn" onClick={downloadYearly}>Download Yearly PDF</button>
           </div>
         </div>
       </div>
 
+      {/* ---------------- CHANGE PASSWORD MODAL ---------------- */}
+      {isChangePasswordOpen && (
+        <div className="modal">
+          <div className="modal-content">
+            <h3>Change Password</h3>
+            <div className="form-row">
+              <label>Old Password</label>
+              <input
+                type="password"
+                value={passwordForm.oldPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+              />
+            </div>
+            <div className="form-row">
+              <label>New Password</label>
+              <input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              />
+            </div>
+            <div className="form-row">
+              <label>Confirm New Password</label>
+              <input
+                type="password"
+                value={passwordForm.confirmNewPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmNewPassword: e.target.value })}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="btn" onClick={handleChangePassword} disabled={isSubmittingPassword}>
+                {isSubmittingPassword ? 'Saving...' : 'Save'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setIsChangePasswordOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- STYLES ---------------- */}
       <style>{`
         body { margin: 0; background: #f4f6f8; }
         .dashboard-container { font-family: 'Segoe UI', sans-serif; }
         .dashboard-content { padding: 20px; }
-
         .summary-cards { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
         .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); flex: 1; min-width: 180px; margin-bottom: 20px; }
         .income-card { border-left: 4px solid #0a84ff; }
@@ -299,7 +339,6 @@ export default function Dashboard() {
         .net-card { border-left: 4px solid #34c759; }
         .summary-cards .card h4 { margin: 0 0 10px 0; font-weight: 600; }
         .summary-cards .card p { font-size: 1.3em; font-weight: bold; }
-
         .chart-card { min-height: 350px; }
         .pending-flats-columns { display: flex; gap: 20px; flex-wrap: wrap; overflow-x: auto; }
         .pending-flats-column { flex: 1; min-width: 250px; background: #f9f9f9; border-radius: 8px; padding: 10px; }
@@ -308,14 +347,20 @@ export default function Dashboard() {
         .table-scroll th, .table-scroll td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
         .table-scroll th { background-color: #eaeaea; font-weight: 600; }
         .table-scroll tr:hover { background-color: #f1faff; }
-
         .actions-card, .reports-card { display: flex; flex-direction: column; gap: 10px; }
         .actions-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
         .btn { padding: 10px 16px; background-color: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
         .btn.logout { background-color: #ff3b30; }
         .btn.logout:hover { background-color: #c1271f; }
         .btn:hover { background-color: #006fd6; }
-
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #565e64; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
+        .form-row { margin-bottom: 12px; display: flex; flex-direction: column; }
+        .form-row label { margin-bottom: 6px; font-weight: 600; }
+        .form-row input { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
         @media (max-width: 768px) {
           .summary-cards { flex-direction: column; }
           .actions-buttons { flex-direction: column; }

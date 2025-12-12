@@ -1,0 +1,33 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+.cache/
+
+# React / Vite / CRA
+.vscode/
+.env
+.env.local
+.env.development
+.env.production
+*.local
+
+# Logs
+logs/
+*.log
+log/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Backup
+*.bak
+*.tmp
+
+# Editor
+.idea/
+*.iml

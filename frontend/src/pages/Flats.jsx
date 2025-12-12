@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import { getAuth } from '../services/auth';
+import { useNavigate } from 'react-router-dom';
+import Nav from '../components/Nav';
+
 
 export default function Flats() {
+  const navigate = useNavigate();
+  const [auth, setAuth] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true); // wait for auth
+
   const initialForm = {
     flat_number: '',
     owner_name: '',
@@ -18,9 +26,25 @@ export default function Flats() {
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Auth check on mount
   useEffect(() => {
-    loadFlats();
-  }, []);
+    const user = getAuth();
+    if (!user || !user.token) {
+      navigate('/login'); // redirect if not logged in
+    } else {
+      setAuth(user);
+    }
+    setCheckingAuth(false);
+  }, [navigate]);
+
+  // Load flats after auth is confirmed
+  useEffect(() => {
+    if (auth) {
+      loadFlats();
+    }
+  }, [auth]);
+
+  if (checkingAuth) return <div>Loading...</div>;
 
   const loadFlats = () => {
     api
@@ -79,6 +103,7 @@ export default function Flats() {
 
   return (
     <div className="flats-container">
+      <Nav />
       {/* Header */}
       <div className="header">
         <h2>Flats Management</h2>
@@ -133,71 +158,43 @@ export default function Flats() {
             <div className="modal-body">
               <div className="form-row">
                 <label>Flat No</label>
-                <input
-                  value={form.flat_number}
-                  onChange={e => setForm({ ...form, flat_number: e.target.value })}
-                />
+                <input value={form.flat_number} onChange={e => setForm({ ...form, flat_number: e.target.value })} />
               </div>
               <div className="form-row">
                 <label>Owner Name</label>
-                <input
-                  value={form.owner_name}
-                  onChange={e => setForm({ ...form, owner_name: e.target.value })}
-                />
+                <input value={form.owner_name} onChange={e => setForm({ ...form, owner_name: e.target.value })} />
               </div>
               <div className="form-row">
                 <label>Phone</label>
-                <input
-                  value={form.phone_number}
-                  onChange={e => setForm({ ...form, phone_number: e.target.value })}
-                />
+                <input value={form.phone_number} onChange={e => setForm({ ...form, phone_number: e.target.value })} />
               </div>
               <div className="form-row">
                 <label>Floor</label>
-                <input
-                  type="number"
-                  value={form.floor}
-                  onChange={e => setForm({ ...form, floor: e.target.value })}
-                />
+                <input type="number" value={form.floor} onChange={e => setForm({ ...form, floor: e.target.value })} />
               </div>
               <div className="form-row">
                 <label>Flat Type</label>
-                <select
-                  value={form.flat_type}
-                  onChange={e => setForm({ ...form, flat_type: e.target.value })}
-                >
+                <select value={form.flat_type} onChange={e => setForm({ ...form, flat_type: e.target.value })}>
                   <option>1BHK</option>
                   <option>2BHK</option>
                   <option>3BHK</option>
                 </select>
               </div>
-
-              {/* Ownership Type updated with Vacant */}
               <div className="form-row">
                 <label>Ownership</label>
-                <select
-                  value={form.ownership_type}
-                  onChange={e => setForm({ ...form, ownership_type: e.target.value })}
-                >
+                <select value={form.ownership_type} onChange={e => setForm({ ...form, ownership_type: e.target.value })}>
                   <option>Owned</option>
                   <option>Rented</option>
                   <option>Vacant</option>
                 </select>
               </div>
-
               <div className="form-row">
                 <label>Maintenance Amount</label>
-                <input
-                  value={form.maintenance_amount}
-                  onChange={e => setForm({ ...form, maintenance_amount: e.target.value })}
-                />
+                <input value={form.maintenance_amount} onChange={e => setForm({ ...form, maintenance_amount: e.target.value })} />
               </div>
               <div className="form-row">
                 <label>Status</label>
-                <select
-                  value={form.status}
-                  onChange={e => setForm({ ...form, status: e.target.value })}
-                >
+                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                   <option>Active</option>
                   <option>Inactive</option>
                 </select>
@@ -217,97 +214,7 @@ export default function Flats() {
       )}
 
       {/* Styles */}
-      <style>{`
-        .flats-container {
-          padding: 20px;
-          font-family: 'Segoe UI', sans-serif;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-        }
-        .btn-add {
-          background-color: #0a84ff;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-weight: 600;
-        }
-        .btn-add:hover { background-color: #006fd6; }
-
-        .card {
-          background: #fff;
-          border-radius: 10px;
-          padding: 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-
-        .table-responsive { overflow-x: auto; }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 700px;
-        }
-        th, td {
-          padding: 12px 10px;
-          text-align: left;
-        }
-        th {
-          background-color: #f5f5f5;
-          font-weight: 600;
-        }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-
-        .btn { 
-          padding: 6px 12px; 
-          border-radius: 6px; 
-          border: none; 
-          cursor: pointer; 
-        }
-        .btn-edit { background-color: #0a84ff; color: white; margin-right: 5px; }
-        .btn-edit:hover { background-color: #006fd6; }
-        .btn-delete { background-color: #ff3b30; color: white; }
-        .btn-delete:hover { background-color: #c1271f; }
-        .btn-secondary { background-color: #ccc; color: #333; }
-
-        /* Modal */
-        .modal {
-          position: fixed;
-          top: 0; left: 0;
-          width: 100%; height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          padding: 10px;
-          z-index: 1000;
-        }
-        .modal-content {
-          background: #fff;
-          padding: 20px;
-          width: 100%;
-          max-width: 500px;
-          border-radius: 10px;
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-        .modal-body { display: flex; flex-direction: column; gap: 12px; }
-        .form-row { display: flex; flex-direction: column; gap: 4px; }
-        .modal-actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
-
-        @media (max-width: 600px) {
-          table { font-size: 14px; }
-          .btn-add { padding: 8px 12px; font-size: 14px; }
-          .modal-content { padding: 15px; }
-          .form-row input, .form-row select { font-size: 14px; padding: 6px; }
-        }
-      `}</style>
+      <style>{/* keep your existing styles */}</style>
     </div>
   );
 }

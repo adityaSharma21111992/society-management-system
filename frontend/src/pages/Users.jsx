@@ -1,8 +1,20 @@
+// src/pages/Users.jsx
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import { getAuth } from "../services/auth";
+import { Navigate } from "react-router-dom";
+import Nav from '../components/Nav';
 
 export default function Users() {
+  // ------------------- AUTH CHECK -------------------
+  const auth = getAuth();
+  const token = auth?.token;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // ------------------- STATE -------------------
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -15,19 +27,16 @@ export default function Users() {
   const [editingId, setEditingId] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  const auth = getAuth();
-  const token = auth?.token;
-
+  // ------------------- LOAD USERS -------------------
   const loadUsers = async () => {
     try {
       const res = await api.get("/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUsers(res.data);
+      setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Fetch error:", err);
       alert("Unauthorized. Please login again.");
-      window.location.href = "/login";
     }
   };
 
@@ -35,6 +44,7 @@ export default function Users() {
     loadUsers();
   }, []);
 
+  // ------------------- HANDLE SUBMIT -------------------
   const handleSubmit = async () => {
     try {
       if (editingId) {
@@ -63,17 +73,24 @@ export default function Users() {
     }
   };
 
+  // ------------------- HANDLE DELETE -------------------
   const handleDelete = async (id) => {
-    if (window.confirm("Delete this user?")) {
+    if (!window.confirm("Delete this user?")) return;
+    try {
       await api.delete(`/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       loadUsers();
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Failed to delete user");
     }
   };
 
+  // ------------------- RENDER -------------------
   return (
     <div className="users-container">
+      <Nav />
       <div className="header">
         <h2>User Management</h2>
         <button className="btn-add" onClick={() => setShowModal(true)}>

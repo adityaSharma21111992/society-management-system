@@ -1,14 +1,24 @@
 // src/pages/Login.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { setAuth } from "../services/auth";
+import { setAuth, getAuth } from "../services/auth";
 import logo from "../assets/logo.png";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // ✅ Redirect to dashboard if already logged in
+  useEffect(() => {
+    const auth = getAuth();
+    if (auth && auth.token) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [navigate]);
 
   const login = async () => {
     if (!id || !password) {
@@ -39,30 +49,22 @@ export default function Login() {
       const userId = user.user_id || user.id || null;
       const email = user.email || id;
 
-      console.log("🔹 Token used:", token);
-
-
-      // ✅ Save login data in both localStorage & helper
+      // ✅ Save login data in auth helper & localStorage
       setAuth({ id: userId, token, role, email });
-
-      console.log("🔹 Token after setting:", token);
-
 
       if (userId && token) {
         localStorage.setItem("token", token);
         localStorage.setItem("user_id", userId);
-        localStorage.setItem("user_name", res.data.user.name);
-        localStorage.setItem("role", res.data.user.role);
+        localStorage.setItem("user_name", user.name || res.data.user.name || "User");
+        localStorage.setItem("role", role);
         localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("user_role", role);
       }
-
-      if (user.name) {
-        localStorage.setItem("user_name", user.name);
-      }
-      localStorage.setItem("user_role", role);
 
       setStatus("✅ Login successful!");
-      setTimeout(() => (window.location.href = "/dashboard"), 800);
+
+      // ✅ Use navigate with replace to prevent back navigation
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
       setStatus(
