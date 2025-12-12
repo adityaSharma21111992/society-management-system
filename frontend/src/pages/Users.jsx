@@ -17,14 +17,17 @@ export default function Users() {
     mobile: "",
     email: "",
     password: "",
-    role: "viewer",
+    role: "manager", // default manager
   });
+
   const [editingId, setEditingId] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   const loadUsers = async () => {
     try {
-      const res = await api.get("/users", { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.get("/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
@@ -32,18 +35,34 @@ export default function Users() {
     }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleSubmit = async () => {
     try {
+      const payload = { ...form, role: "manager" }; // enforce manager role
+
       if (editingId) {
-        await api.put(`/users/${editingId}`, form, { headers: { Authorization: `Bearer ${token}` } });
+        await api.put(`/users/${editingId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
-        await api.post("/users", form, { headers: { Authorization: `Bearer ${token}` } });
+        await api.post("/users", payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
+
       setShowModal(false);
       setEditingId(null);
-      setForm({ name: "", username: "", mobile: "", email: "", password: "", role: "viewer" });
+      setForm({
+        name: "",
+        username: "",
+        mobile: "",
+        email: "",
+        password: "",
+        role: "manager",
+      });
       loadUsers();
     } catch (err) {
       console.error(err);
@@ -54,7 +73,9 @@ export default function Users() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user?")) return;
     try {
-      await api.delete(`/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await api.delete(`/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       loadUsers();
     } catch (err) {
       console.error(err);
@@ -68,7 +89,9 @@ export default function Users() {
 
       <div className="header">
         <h2>User Management</h2>
-        <button className="btn-add" onClick={() => setShowModal(true)}>+ Add User</button>
+        <button className="btn-add" onClick={() => setShowModal(true)}>
+          + Add User
+        </button>
       </div>
 
       <div className="table-wrapper">
@@ -87,25 +110,50 @@ export default function Users() {
                 <th>Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {users.map((u) => (
-                <tr key={u.user_id}>
-                  <td>{u.name}</td>
-                  <td>{u.username}</td>
-                  <td>{u.mobile}</td>
-                  <td>{u.email}</td>
-                  <td>{u.role}</td>
-                  <td>{u.status || "active"}</td>
-                  <td>
-                    <button className="btn btn-edit" onClick={() => {
-                      setForm({ ...u, password: "" });
-                      setEditingId(u.user_id);
-                      setShowModal(true);
-                    }}>Edit</button>
-                    <button className="btn btn-delete" onClick={() => handleDelete(u.user_id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
+              {users.map((u) => {
+                const isAdminUser = u.role === "admin"; // check admin
+
+                return (
+                  <tr key={u.user_id}>
+                    <td>{u.name}</td>
+                    <td>{u.username}</td>
+                    <td>{u.mobile}</td>
+                    <td>{u.email}</td>
+                    <td>{u.role}</td>
+                    <td>{u.status || "active"}</td>
+
+                    <td>
+                      {/* Hide actions if admin user */}
+                      {!isAdminUser && (
+                        <>
+                          <button
+                            className="btn btn-edit"
+                            onClick={() => {
+                              setForm({ ...u, password: "" });
+                              setEditingId(u.user_id);
+                              setShowModal(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            className="btn btn-delete"
+                            onClick={() => handleDelete(u.user_id)}
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+
+                      {/* Show nothing for admin user */}
+                      {isAdminUser && <span>—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -116,35 +164,79 @@ export default function Users() {
           <div className="modal-content">
             <h3>{editingId ? "Edit User" : "Add User"}</h3>
             <div className="modal-body">
-              <input placeholder="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-              <input placeholder="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} />
-              <input placeholder="Mobile" value={form.mobile} onChange={e => setForm({ ...form, mobile: e.target.value })} />
-              <input placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
-              {!editingId && <input placeholder="Password" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />}
-              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="accountant">Accountant</option>
-                <option value="viewer">Viewer</option>
-              </select>
+              <input
+                placeholder="Name"
+                value={form.name}
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value })
+                }
+              />
+              <input
+                placeholder="Username"
+                value={form.username}
+                onChange={(e) =>
+                  setForm({ ...form, username: e.target.value })
+                }
+              />
+              <input
+                placeholder="Mobile"
+                value={form.mobile}
+                onChange={(e) =>
+                  setForm({ ...form, mobile: e.target.value })
+                }
+              />
+              <input
+                placeholder="Email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm({ ...form, email: e.target.value })
+                }
+              />
+
+              {!editingId && (
+                <input
+                  placeholder="Password"
+                  type="password"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
+                />
+              )}
+
+              {/* Read-only role field */}
+              <input
+                type="text"
+                value="Manager"
+                readOnly
+                className="form-control"
+              />
             </div>
+
             <div className="modal-actions">
-              <button className="btn btn-primary" onClick={handleSubmit}>{editingId ? "Update" : "Add"}</button>
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>
+                {editingId ? "Update" : "Add"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Your styles unchanged */}
       <style>{`
-        /* Navbar fix */
         .navbar {
           position: fixed;
           top: 0;
           left: 0;
           width: 100%;
           height: 60px;
-          background: #4f46e5; /* same as Flats page */
+          background: #4f46e5;
           color: #fff;
           display: flex;
           align-items: center;
