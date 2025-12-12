@@ -356,32 +356,44 @@ export const expensesReport = async (req, res) => {
 };*/
 
 //new user avitiy report
+// controllers/reportController.js  (or wherever userReport lives)
 export const userReport = async (req, res) => {
   try {
     const { user_id, month, year } = req.query;
 
+    // ---------- user filter (applies to final query) ----------
     const userFilter = user_id ? `WHERE u.user_id = ?` : "";
-    const params = [];
-    if (user_id) params.push(user_id);
 
-    // Prepare optional month/year filter for expenses
-    let expenseFilter = "";
-    const expenseParams = [];
+    // ---------- payments filter (Option A: filter by payments.month & payments.year columns) ----------
+    let paymentsFilter = "";
+    const paymentsParams = [];
     if (month && year) {
-      expenseFilter = "WHERE YEAR(e.date) = ? AND MONTH(e.date) = ?";
-      expenseParams.push(year, month);
+      paymentsFilter = `WHERE p.month = ? AND p.year = ?`;
+      // push in the same order as placeholders
+      paymentsParams.push(month, year);
     }
 
-    // -------------------- PAYMENTS SUBQUERY --------------------
+    // ---------- expenses filter (expenses table has `date` column) ----------
+    let expensesFilter = "";
+    const expensesParams = [];
+    if (month && year) {
+      // filter expenses by YEAR(date) and MONTH(date)
+      expensesFilter = `WHERE YEAR(e.date) = ? AND MONTH(e.date) = ?`;
+      // For expenses subquery we push year then month because placeholders are YEAR(...)=? AND MONTH(...)=?
+      expensesParams.push(year, month);
+    }
+
+    // ---------- PAYMENTS SUBQUERY ----------
     const paymentsSub = `
-      SELECT 
-        created_by AS user_id, 
-        IFNULL(SUM(amount_paid), 0) AS total_payments
-      FROM payments
-      GROUP BY created_by
+      SELECT
+        p.created_by AS user_id,
+        IFNULL(SUM(p.amount_paid), 0) AS total_payments
+      FROM payments p
+      ${paymentsFilter}
+      GROUP BY p.created_by
     `;
 
-    // -------------------- EXPENSES SUBQUERY --------------------
+    // ---------- EXPENSES SUBQUERY ----------
     const expensesSub = `
       SELECT
         e.created_by AS user_id,
@@ -391,11 +403,11 @@ export const userReport = async (req, res) => {
       FROM expenses e
       LEFT JOIN users uc ON e.created_by = uc.user_id
       LEFT JOIN users uu ON e.updated_by = uu.user_id
-      ${expenseFilter}
+      ${expensesFilter}
       GROUP BY e.created_by
     `;
 
-    // -------------------- MAIN QUERY --------------------
+    // ---------- MAIN QUERY ----------
     const sql = `
       SELECT
         u.user_id,
@@ -411,15 +423,20 @@ export const userReport = async (req, res) => {
       ORDER BY u.name
     `;
 
-    const [rows] = await db.query(sql, [...params, ...expenseParams]);
+    // Important: parameter order must match the order of ? in SQL.
+    // paymentsSub placeholders appear before expensesSub placeholders, and userFilter is at the end.
+    const finalParams = [...paymentsParams, ...expensesParams, ...(user_id ? [user_id] : [])];
 
+    const [rows] = await db.query(sql, finalParams);
+
+    // If you want totals aggregated across returned rows, you may append them here, but frontend computes totals locally.
     return res.json(rows);
-
   } catch (err) {
     console.error("User report error:", err);
-    res.status(500).json({ error: "Failed to fetch user report" });
+    return res.status(500).json({ error: "Failed to fetch user report" });
   }
 };
+
 
 
 
