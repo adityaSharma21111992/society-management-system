@@ -4,11 +4,10 @@ import api from '../services/api';
 import { getAuth } from '../services/auth';
 import Nav from '../components/Nav';
 
-
 export default function Expenses() {
   const navigate = useNavigate();
   const [auth, setAuth] = useState(null);
-  const [checkingAuth, setCheckingAuth] = useState(true); // to wait for auth check
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const initialForm = {
     title: '',
@@ -28,25 +27,18 @@ export default function Expenses() {
     year: new Date().getFullYear(),
   });
 
-  // Check authentication on mount
   useEffect(() => {
     const user = getAuth();
-    if (!user || !user.token) {
-      navigate('/login'); // redirect if not logged in
-    } else {
-      setAuth(user);
-    }
+    if (!user || !user.token) navigate('/login');
+    else setAuth(user);
     setCheckingAuth(false);
   }, [navigate]);
 
-  // Load expenses after auth is confirmed
   useEffect(() => {
-    if (auth) {
-      refreshData();
-    }
+    if (auth) refreshData();
   }, [auth]);
 
-  if (checkingAuth) return <div>Loading...</div>; // show while checking auth
+  if (checkingAuth) return <div>Loading...</div>;
 
   const currentUserId = Number(auth?.id);
   const currentUserRole = auth?.role;
@@ -60,7 +52,7 @@ export default function Expenses() {
   const loadExpenses = async () => {
     try {
       const res = await api.get('/expenses');
-      const normalized = res.data.map((exp) => ({
+      const normalized = res.data.map(exp => ({
         ...exp,
         created_by_name: exp.created_by_name || '-',
         updated_by_name: exp.updated_by_name || '-',
@@ -74,7 +66,7 @@ export default function Expenses() {
       }));
       setExpenses(normalized);
     } catch (err) {
-      console.error('Failed to load expenses:', err);
+      console.error(err);
     }
   };
 
@@ -83,7 +75,7 @@ export default function Expenses() {
       const res = await api.get(`/expenses/monthly/${year}/${month}`);
       setMonthlyExpense(Number(res.data?.total_expense || 0));
     } catch (err) {
-      console.error('Failed to fetch monthly expense:', err);
+      console.error(err);
       setMonthlyExpense(0);
     }
   };
@@ -112,7 +104,6 @@ export default function Expenses() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this expense?')) return;
-
     try {
       await api.delete(`/expenses/${id}`);
       await refreshData();
@@ -127,33 +118,23 @@ export default function Expenses() {
       alert('Please fill all required fields (Title, Amount, Date)');
       return;
     }
-
-    const payload = {
-      ...form,
-      amount: parseFloat(form.amount),
-      user_id: currentUserId,
-    };
-
+    const payload = { ...form, amount: parseFloat(form.amount), user_id: currentUserId };
     try {
-      if (editingId) {
-        await api.put(`/expenses/${editingId}`, payload);
-      } else {
-        await api.post('/expenses', payload);
-      }
-
+      if (editingId) await api.put(`/expenses/${editingId}`, payload);
+      else await api.post('/expenses', payload);
       setForm(initialForm);
       setEditingId(null);
       setIsModalOpen(false);
       await refreshData();
     } catch (err) {
-      console.error('Failed to save expense:', err);
+      console.error(err);
       alert('Failed to save expense');
     }
   };
 
   const handleMonthYearChange = (e) => {
     const { name, value } = e.target;
-    setMonthYear((prev) => ({ ...prev, [name]: value }));
+    setMonthYear(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFilterMonthly = async () => {
@@ -163,14 +144,14 @@ export default function Expenses() {
   return (
     <div className="expenses-container">
       <Nav />
-      {/* Header */}
-      <div className="header">
+
+      <header className="expenses-header">
         <h2>Expenses Management</h2>
         <div>
           Logged in as <b>{currentUserRole || 'User'}</b> ({currentUserEmail || 'unknown'})
         </div>
-        <button className="btn-add" onClick={openAddModal}>+ Add Expense</button>
-      </div>
+        <button className="btn btn-add" onClick={openAddModal}>+ Add Expense</button>
+      </header>
 
       {/* Monthly Filter */}
       <div className="card filter-card">
@@ -202,7 +183,9 @@ export default function Expenses() {
               </tr>
             </thead>
             <tbody>
-              {expenses.map((exp) => (
+              {expenses.length === 0 ? (
+                <tr><td colSpan="10" style={{ textAlign:'center' }}>No expenses found</td></tr>
+              ) : expenses.map(exp => (
                 <tr key={exp.expense_id}>
                   <td>{exp.title}</td>
                   <td>{exp.description}</td>
@@ -224,46 +207,38 @@ export default function Expenses() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Modal */}
       {isModalOpen && (
-        <div className="modal">
-          <div className="modal-content">
+        <div className="modal-overlay">
+          <div className="modal">
             <h3>{editingId ? 'Edit Expense' : 'Add New Expense'}</h3>
-            <div className="modal-body">
-              <div className="form-row">
-                <label>Title*</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Description</label>
-                <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Amount*</label>
-                <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Date*</label>
-                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Paid By</label>
-                <input value={form.paid_by} onChange={(e) => setForm({ ...form, paid_by: e.target.value })} />
-              </div>
-
-              {editingId && (
-                <>
-                  <div className="form-row">
-                    <label>Created By / At</label>
-                    <span>{form.created_by_name} / {form.created_at}</span>
-                  </div>
-                  <div className="form-row">
-                    <label>Updated By / At</label>
-                    <span>{form.updated_by_name} / {form.updated_at}</span>
-                  </div>
-                </>
-              )}
+            <div className="form-row">
+              <label>Title*</label>
+              <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
             </div>
+            <div className="form-row">
+              <label>Description</label>
+              <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+            </div>
+            <div className="form-row">
+              <label>Amount*</label>
+              <input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} />
+            </div>
+            <div className="form-row">
+              <label>Date*</label>
+              <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+            </div>
+            <div className="form-row">
+              <label>Paid By</label>
+              <input value={form.paid_by} onChange={e => setForm({...form, paid_by: e.target.value})} />
+            </div>
+
+            {editingId && (
+              <>
+                <div className="form-row"><label>Created By / At</label><span>{form.created_by_name} / {form.created_at}</span></div>
+                <div className="form-row"><label>Updated By / At</label><span>{form.updated_by_name} / {form.updated_at}</span></div>
+              </>
+            )}
 
             <div className="modal-actions">
               <button className="btn" onClick={handleSubmit}>{editingId ? 'Update' : 'Add'}</button>
@@ -273,8 +248,59 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* Styles */}
-      <style>{/* keep your existing styles */}</style>
+      <style>{`
+        /* Navbar fix */
+        .navbar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 60px;
+          background: #4f46e5;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          padding: 0 20px;
+          z-index: 1000;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .expenses-container {
+          padding: 20px;
+          padding-top: 80px;
+          font-family: 'Segoe UI', sans-serif;
+          background: #f4f6f8;
+          min-height: 100vh;
+        }
+
+        .expenses-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .btn { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; margin-right:6px; }
+        .btn-add { background:#007bff; color:#fff; }
+        .btn-edit { background:#0a84ff; color:#fff; }
+        .btn-delete { background:#ff3b30; color:#fff; }
+
+        .filter-card { display:flex; align-items:center; gap:8px; padding:12px; margin-bottom:12px; border-radius:8px; background:#fff; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
+        .filter-card input { padding:6px 8px; border-radius:6px; border:1px solid #ccc; width:80px; }
+
+        .monthly-total { margin-left:16px; font-weight:bold; }
+
+        .card.table-card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); margin-bottom:12px; overflow:auto; }
+        .table { width:100%; border-collapse:collapse; min-width:900px; }
+        .table th, .table td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
+
+        .modal-overlay { position:fixed; inset:0; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.5); padding:20px; z-index:1100; }
+        .modal { background:#fff; padding:18px; border-radius:8px; width:420px; max-width:100%; }
+        .form-row { margin-bottom:10px; display:flex; flex-direction:column; }
+        .form-row label { margin-bottom:6px; font-weight:600; }
+        .form-row input, .form-row textarea { padding:8px; border-radius:6px; border:1px solid #ccc; width:100%; box-sizing:border-box; }
+        .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+
+        @media (max-width:700px) {
+          .table { min-width:100%; font-size:14px; }
+          .modal { width:100%; }
+          .filter-card { flex-direction:column; align-items:flex-start; gap:6px; }
+        }
+      `}</style>
     </div>
   );
 }

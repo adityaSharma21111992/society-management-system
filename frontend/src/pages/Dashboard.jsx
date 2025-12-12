@@ -110,29 +110,31 @@ export default function Dashboard() {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
   const handleChangePassword = async () => {
-    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword) {
-      return alert('Please fill all password fields');
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
-      return alert('New password and confirm password do not match');
-    }
+  if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmNewPassword) {
+    return alert('Please fill all password fields');
+  }
+  if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+    return alert('New password and confirm password do not match');
+  }
 
-    setIsSubmittingPassword(true);
-    try {
-      await api.post('/users/change-password', {
-        oldPassword: passwordForm.oldPassword,
-        newPassword: passwordForm.newPassword
-      });
-      alert('Password changed successfully');
-      setIsChangePasswordOpen(false);
-      setPasswordForm({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
-    } catch (err) {
-      console.error('Password change error:', err);
-      alert(err.response?.data?.message || 'Failed to change password');
-    } finally {
-      setIsSubmittingPassword(false);
-    }
-  };
+  setIsSubmittingPassword(true);
+  try {
+    await api.post('/users/change-password', {
+      user_id: auth.id,
+      old_password: passwordForm.oldPassword,
+      new_password: passwordForm.newPassword
+    });
+    alert('Password changed successfully');
+    setIsChangePasswordOpen(false);
+    setPasswordForm({ oldPassword: '', newPassword: '', confirmNewPassword: '' });
+  } catch (err) {
+    console.error('Password change error:', err);
+    alert(err.response?.data?.error || 'Failed to change password');
+  } finally {
+    setIsSubmittingPassword(false);
+  }
+};
+
 
   // ---------------- CONDITIONAL RENDER STATES ----------------
   if (auth === undefined) return <div>Checking login...</div>;
@@ -329,44 +331,45 @@ export default function Dashboard() {
 
       {/* ---------------- STYLES ---------------- */}
       <style>{`
-        body { margin: 0; background: #f4f6f8; }
-        .dashboard-container { font-family: 'Segoe UI', sans-serif; }
-        .dashboard-content { padding: 20px; }
-        .summary-cards { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
-        .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); flex: 1; min-width: 180px; margin-bottom: 20px; }
-        .income-card { border-left: 4px solid #0a84ff; }
-        .expense-card { border-left: 4px solid #ff3b30; }
-        .net-card { border-left: 4px solid #34c759; }
-        .summary-cards .card h4 { margin: 0 0 10px 0; font-weight: 600; }
-        .summary-cards .card p { font-size: 1.3em; font-weight: bold; }
-        .chart-card { min-height: 350px; }
-        .pending-flats-columns { display: flex; gap: 20px; flex-wrap: wrap; overflow-x: auto; }
-        .pending-flats-column { flex: 1; min-width: 250px; background: #f9f9f9; border-radius: 8px; padding: 10px; }
-        .table-scroll { max-height: 300px; overflow-y: auto; }
-        .table-scroll table { width: 100%; border-collapse: collapse; }
-        .table-scroll th, .table-scroll td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        .table-scroll th { background-color: #eaeaea; font-weight: 600; }
-        .table-scroll tr:hover { background-color: #f1faff; }
-        .actions-card, .reports-card { display: flex; flex-direction: column; gap: 10px; }
-        .actions-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-        .btn { padding: 10px 16px; background-color: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .btn.logout { background-color: #ff3b30; }
-        .btn.logout:hover { background-color: #c1271f; }
-        .btn:hover { background-color: #006fd6; }
-        .btn-secondary { background-color: #6c757d; }
-        .btn-secondary:hover { background-color: #565e64; }
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
-        .form-row { margin-bottom: 12px; display: flex; flex-direction: column; }
-        .form-row label { margin-bottom: 6px; font-weight: 600; }
-        .form-row input { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-        @media (max-width: 768px) {
-          .summary-cards { flex-direction: column; }
-          .actions-buttons { flex-direction: column; }
-          .pending-flats-columns { flex-direction: column; }
-        }
-      `}</style>
+  body { margin: 0; background: #f4f6f8; }
+  .dashboard-container { font-family: 'Segoe UI', sans-serif; }
+  .dashboard-content { padding: 20px; }
+  .summary-cards { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); flex: 1; min-width: 180px; margin-bottom: 20px; }
+  .income-card { border-left: 4px solid #4f46e5; } /* changed */
+  .expense-card { border-left: 4px solid #ff3b30; }
+  .net-card { border-left: 4px solid #34c759; }
+  .summary-cards .card h4 { margin: 0 0 10px 0; font-weight: 600; }
+  .summary-cards .card p { font-size: 1.3em; font-weight: bold; }
+  .chart-card { min-height: 350px; }
+  .pending-flats-columns { display: flex; gap: 20px; flex-wrap: wrap; overflow-x: auto; }
+  .pending-flats-column { flex: 1; min-width: 250px; background: #f9f9f9; border-radius: 8px; padding: 10px; }
+  .table-scroll { max-height: 300px; overflow-y: auto; }
+  .table-scroll table { width: 100%; border-collapse: collapse; }
+  .table-scroll th, .table-scroll td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+  .table-scroll th { background-color: #eaeaea; font-weight: 600; }
+  .table-scroll tr:hover { background-color: #f1faff; }
+  .actions-card, .reports-card { display: flex; flex-direction: column; gap: 10px; }
+  .actions-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { padding: 10px 16px; background-color: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; } /* changed */
+  .btn.logout { background-color: #ff3b30; }
+  .btn.logout:hover { background-color: #c1271f; }
+  .btn:hover { background-color: #3e3ac9; } /* slightly darker hover for #4f46e5 */
+  .btn-secondary { background-color: #6c757d; }
+  .btn-secondary:hover { background-color: #565e64; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+  .modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
+  .form-row { margin-bottom: 12px; display: flex; flex-direction: column; }
+  .form-row label { margin-bottom: 6px; font-weight: 600; }
+  .form-row input { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  @media (max-width: 768px) {
+    .summary-cards { flex-direction: column; }
+    .actions-buttons { flex-direction: column; }
+    .pending-flats-columns { flex-direction: column; }
+  }
+`}</style>
+
     </div>
   );
 }

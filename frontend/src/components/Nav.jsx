@@ -33,7 +33,7 @@ export default function Navbar() {
       {/* Styles */}
       <style>{`
         .navbar {
-          background-color: #0a84ff;
+          background-color: #4f46e5;
           color: white;
           padding: 15px 25px;
           display: flex;
