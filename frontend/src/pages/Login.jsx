@@ -12,12 +12,10 @@ export default function Login() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ Redirect to dashboard if already logged in
+  // Redirect if already logged in
   useEffect(() => {
     const auth = getAuth();
-    if (auth && auth.token) {
-      navigate("/dashboard", { replace: true });
-    }
+    if (auth && auth.token) navigate("/dashboard", { replace: true });
   }, [navigate]);
 
   const login = async () => {
@@ -25,12 +23,10 @@ export default function Login() {
       setStatus("⚠️ Please enter Email / Username / Phone and Password");
       return;
     }
-
     setLoading(true);
     setStatus("⏳ Logging in...");
 
     try {
-      // ✅ Choose endpoint based on user type
       let endpoint = "/login";
       const idLower = id.toLowerCase();
       if (
@@ -42,28 +38,23 @@ export default function Login() {
       }
 
       const res = await api.post(endpoint, { id, password });
-
       const token = res.data.token;
       const user = res.data.user || {};
       const role = res.data.role || user.role || "user";
       const userId = user.user_id || user.id || null;
-      const email = user.email || id;
 
-      // ✅ Save login data in auth helper & localStorage
-      setAuth({ id: userId, token, role, email });
+      setAuth({ id: userId, token, role, email: user.email || id });
 
       if (userId && token) {
         localStorage.setItem("token", token);
         localStorage.setItem("user_id", userId);
-        localStorage.setItem("user_name", user.name || res.data.user.name || "User");
+        localStorage.setItem("user_name", user.name || "User");
         localStorage.setItem("role", role);
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("user_role", role);
       }
 
       setStatus("✅ Login successful!");
-
-      // ✅ Use navigate with replace to prevent back navigation
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
@@ -81,13 +72,13 @@ export default function Login() {
     <div className="login-wrapper">
       <div className="login-card">
         <img src={logo} alt="Orion Pride Logo" className="login-logo" />
-        <h2 className="login-title">Welcome Back 👋</h2>
+        <h2 className="login-title">Welcome</h2>
         <p className="login-subtitle">Sign in to your Society Portal</p>
 
         <input
           value={id}
           onChange={(e) => setId(e.target.value)}
-          placeholder="Enter Email / Username / Phone"
+          placeholder="Email / Username / Phone"
           className="login-input"
           disabled={loading}
         />
@@ -96,7 +87,7 @@ export default function Login() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter Password"
+          placeholder="Password"
           className="login-input"
           disabled={loading}
         />
@@ -118,32 +109,35 @@ export default function Login() {
           font-family: "Poppins", sans-serif;
         }
         .login-card {
-          background: rgba(255,255,255,0.08);
-          backdrop-filter: blur(12px);
-          border-radius: 20px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-          padding: 40px 30px;
-          width: 380px;
+          background: rgba(255,255,255,0.05);
+          backdrop-filter: blur(14px);
+          border-radius: 22px;
+          padding: 45px 35px;
+          width: 400px;
           text-align: center;
           color: #fff;
           animation: fadeIn 0.7s ease-in-out;
+          box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+          border: 1px solid rgba(255,255,255,0.12);
         }
-        .login-logo { width: 180px; margin-bottom: 15px; user-select: none; }
-        .login-title { font-size: 1.9rem; font-weight: 600; margin-bottom: 6px; }
-        .login-subtitle { font-size: 0.95rem; color:#ddd; margin-bottom: 25px; }
+        .login-logo { width: 180px; margin-bottom: 20px; user-select: none; filter: brightness(1) contrast(1.2); }
+        .login-title { font-size: 2rem; font-weight: 700; margin-bottom: 6px; color: #fff; }
+        .login-subtitle { font-size: 1rem; color:#ccc; margin-bottom: 28px; }
         .login-input {
-          width:100%; padding:12px 15px; border:none; border-radius:8px;
-          background: rgba(255,255,255,0.12); color:#fff; font-size:1rem; margin-bottom:15px; outline:none;
+          width:100%; padding:14px 18px; border:none; border-radius:10px;
+          background: rgba(255,255,255,0.12); color:#fff; font-size:1rem; margin-bottom:18px; outline:none;
+          transition: all 0.25s ease;
         }
-        .login-input:focus { background: rgba(255,255,255,0.18); box-shadow: 0 0 0 2px rgba(10,132,255,0.5); }
+        .login-input:focus { background: rgba(255,255,255,0.2); box-shadow: 0 0 0 3px rgba(79,70,229,0.5); }
         .login-btn {
-          width:100%; background:#0a84ff; color:white; padding:12px; border:none; border-radius:8px; font-weight:600; cursor:pointer;
+          width:100%; background:#4f46e5; color:white; padding:14px; border:none; border-radius:10px; font-weight:600; cursor:pointer;
+          transition: all 0.25s ease;
         }
-        .login-btn:hover { background:#006fe0; transform: scale(1.02); }
+        .login-btn:hover { background:#3e3ac9; transform: scale(1.03); }
         .login-btn:disabled { background:#777; cursor:not-allowed; }
-        .login-status { margin-top:15px; font-size:0.9rem; color:#ffeb3b; min-height:20px; }
+        .login-status { margin-top:18px; font-size:0.95rem; color:#ffe066; min-height:20px; }
         @keyframes fadeIn { from { opacity:0; transform: translateY(15px);} to { opacity:1; transform: translateY(0);} }
-        @media (max-width:480px) { .login-card { width:90%; padding:30px 20px; } .login-logo { width:140px; } }
+        @media (max-width:480px) { .login-card { width:90%; padding:35px 25px; } .login-logo { width:140px; } }
       `}</style>
     </div>
   );
