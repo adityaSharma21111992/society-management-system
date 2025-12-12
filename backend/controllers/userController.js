@@ -5,7 +5,8 @@ import bcrypt from "bcryptjs";
 export const getAllUsers = async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT user_id, name, email, role, status, created_at, updated_at FROM users ORDER BY user_id DESC`
+      `SELECT user_id, name, username, mobile, email, role, status, created_at, updated_at 
+       FROM users ORDER BY user_id DESC`
     );
     res.json(rows);
   } catch (err) {
@@ -14,19 +15,37 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+
 // ✅ Add new user (Admin only)
 export const addUser = async (req, res) => {
-  const { name, username, mobile, email, password, role } = req.body;
-  if (!name || !email || !username || !mobile || !password)
-    return res.status(400).json({ error: "Missing required fields" });
+  const { name, username, mobile, password } = req.body;
+
+  // required fields
+  if (!name || !username || !mobile || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
 
   try {
-    const hashed = await bcrypt.hash(password, 10);
-    await db.query(
-      `INSERT INTO users (name, username, mobile, email, password, role)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, username, mobile, email, hashed, role || "viewer"]
+    // check duplicates
+    const [existing] = await db.query(
+      `SELECT user_id FROM users WHERE username = ? OR mobile = ?`,
+      [username, mobile]
     );
+
+    if (existing.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Username or mobile already exists ❌" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    await db.query(
+      `INSERT INTO users (name, username, mobile, password, role) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [name, username, mobile, hashed, "manager"]
+    );
+
     res.status(201).json({ message: "User created successfully ✅" });
   } catch (err) {
     console.error("Error creating user:", err);
@@ -34,24 +53,30 @@ export const addUser = async (req, res) => {
   }
 };
 
+
 // ✅ Update user (role or status)
 export const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { name, username, mobile, email, role, status } = req.body;
+  const { name, username, mobile, role, status } = req.body;
 
   try {
     const [result] = await db.query(
-      `UPDATE users SET name=?, username=?, mobile=?, email=?, role=?, status=? WHERE user_id=?`,
-      [name, username, mobile, email, role, status, id]
+      `UPDATE users 
+       SET name=?, username=?, mobile=?, role=?, status=?
+       WHERE user_id=?`,
+      [name, username, mobile, role, status, id]
     );
+
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "User not found" });
+
     res.json({ message: "User updated successfully ✅" });
   } catch (err) {
     console.error("Error updating user:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // ✅ Delete user
 export const deleteUser = async (req, res) => {
@@ -67,10 +92,6 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-/**
- * POST /api/users/change-password
- * Body: { user_id, old_password, new_password }
- */
 
 // ✅ Safely change user password
 export const changePassword = async (req, res) => {

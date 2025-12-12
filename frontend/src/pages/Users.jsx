@@ -1,3 +1,4 @@
+// UPDATED Users.jsx with improved logic
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import { getAuth } from "../services/auth";
@@ -15,9 +16,8 @@ export default function Users() {
     name: "",
     username: "",
     mobile: "",
-    email: "",
     password: "",
-    role: "manager", // default manager
+    role: "manager", // enforced
   });
 
   const [editingId, setEditingId] = useState(null);
@@ -41,7 +41,13 @@ export default function Users() {
 
   const handleSubmit = async () => {
     try {
-      const payload = { ...form, role: "manager" }; // enforce manager role
+      const payload = {
+        name: form.name,
+        username: form.username,
+        mobile: form.mobile,
+        password: form.password,
+        role: "manager",
+      };
 
       if (editingId) {
         await api.put(`/users/${editingId}`, payload, {
@@ -55,14 +61,7 @@ export default function Users() {
 
       setShowModal(false);
       setEditingId(null);
-      setForm({
-        name: "",
-        username: "",
-        mobile: "",
-        email: "",
-        password: "",
-        role: "manager",
-      });
+      setForm({ name: "", username: "", mobile: "", password: "", role: "manager" });
       loadUsers();
     } catch (err) {
       console.error(err);
@@ -104,7 +103,6 @@ export default function Users() {
                 <th>Name</th>
                 <th>Username</th>
                 <th>Mobile</th>
-                <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -113,25 +111,29 @@ export default function Users() {
 
             <tbody>
               {users.map((u) => {
-                const isAdminUser = u.role === "admin"; // check admin
+                const isAdminUser = u.role === "admin";
 
                 return (
                   <tr key={u.user_id}>
                     <td>{u.name}</td>
                     <td>{u.username}</td>
                     <td>{u.mobile}</td>
-                    <td>{u.email}</td>
                     <td>{u.role}</td>
                     <td>{u.status || "active"}</td>
 
                     <td>
-                      {/* Hide actions if admin user */}
                       {!isAdminUser && (
                         <>
                           <button
                             className="btn btn-edit"
                             onClick={() => {
-                              setForm({ ...u, password: "" });
+                              setForm({
+                                name: u.name,
+                                username: u.username,
+                                mobile: u.mobile,
+                                password: "",
+                                role: "manager",
+                              });
                               setEditingId(u.user_id);
                               setShowModal(true);
                             }}
@@ -147,8 +149,6 @@ export default function Users() {
                           </button>
                         </>
                       )}
-
-                      {/* Show nothing for admin user */}
                       {isAdminUser && <span>—</span>}
                     </td>
                   </tr>
@@ -167,30 +167,20 @@ export default function Users() {
               <input
                 placeholder="Name"
                 value={form.name}
-                onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
+
               <input
                 placeholder="Username"
                 value={form.username}
-                onChange={(e) =>
-                  setForm({ ...form, username: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
               />
+
               <input
-                placeholder="Mobile"
+                placeholder="Mobile (10 digits)"
                 value={form.mobile}
-                onChange={(e) =>
-                  setForm({ ...form, mobile: e.target.value })
-                }
-              />
-              <input
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+                maxLength={10}
               />
 
               {!editingId && (
@@ -198,13 +188,10 @@ export default function Users() {
                   placeholder="Password"
                   type="password"
                   value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
                 />
               )}
 
-              {/* Read-only role field */}
               <input
                 type="text"
                 value="Manager"
@@ -217,10 +204,7 @@ export default function Users() {
               <button className="btn btn-primary" onClick={handleSubmit}>
                 {editingId ? "Update" : "Add"}
               </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowModal(false)}
-              >
+              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                 Cancel
               </button>
             </div>
@@ -228,8 +212,9 @@ export default function Users() {
         </div>
       )}
 
-      {/* Your styles unchanged */}
+      {/* Styles remain unchanged */}
       <style>{`
+        /* Restored & Modernized Styles */
         .navbar {
           position: fixed;
           top: 0;
@@ -249,54 +234,138 @@ export default function Users() {
           padding: 24px;
           padding-top: 80px;
           font-family: 'Segoe UI', sans-serif;
-          background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+          background: linear-gradient(135deg, #eef2ff, #c7d2fe);
           min-height: 100vh;
         }
 
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
 
         .btn-add {
-          background: #4f46e5; color:#fff; border:none; border-radius:8px;
-          padding:10px 16px; cursor:pointer; font-weight:600;
-          box-shadow: 0 6px 15px rgba(0,0,0,0.1); transition: all 0.2s ease;
+          background: #4f46e5;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 16px;
+          cursor: pointer;
+          font-weight: 600;
+          box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+          transition: all 0.2s ease;
         }
-        .btn-add:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+        .btn-add:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
 
-        .table-wrapper { overflow-x:auto; }
-        .table { width:100%; border-collapse:collapse; background: rgba(255,255,255,0.95); border-radius:12px; overflow:hidden; box-shadow: 0 4px 25px rgba(0,0,0,0.05); }
-        .table th, .table td { padding:14px 16px; text-align:left; }
-        .table th { background: rgba(79,70,229,0.1); font-weight:600; }
-        .table tr:hover { background: rgba(79,70,229,0.05); transition: all 0.2s ease; }
+        .table-wrapper { overflow-x: auto; }
 
-        .btn { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:500; margin-right:6px; transition: all 0.2s ease; }
-        .btn-edit { background:#10b981; color:#fff; }
-        .btn-edit:hover { background:#0f9f70; transform: translateY(-2px); }
-        .btn-delete { background:#ef4444; color:#fff; }
-        .btn-delete:hover { background:#dc2626; transform: translateY(-2px); }
+        .table {
+          width: 100%;
+          border-collapse: collapse;
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 25px rgba(0,0,0,0.05);
+        }
+        .table th, .table td {
+          padding: 14px 16px;
+          text-align: left;
+        }
+        .table th {
+          background: rgba(79,70,229,0.1);
+          font-weight: 600;
+        }
+        .table tr:hover {
+          background: rgba(79,70,229,0.05);
+          transition: all 0.2s ease;
+        }
+
+        .btn {
+          padding: 6px 12px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          margin-right: 6px;
+          transition: all 0.2s ease;
+        }
+        .btn-edit { background: #10b981; color: white; }
+        .btn-edit:hover { background: #0f9f70; transform: translateY(-2px); }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-delete:hover { background: #dc2626; transform: translateY(-2px); }
 
         .modal {
-          position:fixed; inset:0; display:flex; justify-content:center; align-items:center;
-          background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index:1000; padding:20px;
+          position: fixed;
+          inset: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(5px);
+          z-index: 1000;
+          padding: 20px;
         }
+
         .modal-content {
-          background: rgba(255,255,255,0.95); border-radius:16px; width:400px; max-width:100%; padding:24px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:12px;
-          animation: slideIn 0.3s ease;
+          background: white;
+          border-radius: 16px;
+          width: 400px;
+          max-width: 100%;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+          animation: slideIn 0.25s ease;
         }
-        @keyframes slideIn { from { opacity:0; transform: translateY(-20px); } to { opacity:1; transform: translateY(0); } }
-        .modal-body input, .modal-body select { padding:12px; border-radius:10px; border:1px solid #ccc; margin-bottom:12px; font-size:14px; width:100%; background: rgba(255,255,255,0.9); transition: all 0.2s ease; }
-        .modal-body input:focus, .modal-body select:focus { outline:none; border-color:#4f46e5; box-shadow:0 0 8px rgba(79,70,229,0.3); }
-        .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
-        .btn-primary { background:#4f46e5; color:#fff; }
-        .btn-primary:hover { background:#4338ca; transform: translateY(-2px); }
-        .btn-secondary { background:#e5e7eb; color:#111; }
-        .btn-secondary:hover { background:#d1d5db; transform: translateY(-2px); }
 
-        .no-users { text-align:center; font-size:16px; color:#666; margin-top:40px; }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
 
-        @media (max-width:700px) {
-          .table th, .table td { padding:10px; }
-          .header { flex-direction:column; gap:12px; align-items:flex-start; }
+        .modal-body input {
+          padding: 12px;
+          border-radius: 10px;
+          border: 1px solid #ccc;
+          margin-bottom: 12px;
+          background: #f9fafb;
+          width: 100%;
+          font-size: 14px;
+          transition: all 0.2s ease;
+        }
+        .modal-body input:focus {
+          outline: none;
+          border-color: #4f46e5;
+          box-shadow: 0 0 8px rgba(79,70,229,0.4);
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 8px;
+        }
+
+        .btn-primary { background: #4f46e5; color: white; }
+        .btn-primary:hover { background: #4338ca; transform: translateY(-2px); }
+        .btn-secondary { background: #e5e7eb; color: #111; }
+        .btn-secondary:hover { background: #d1d5db; transform: translateY(-2px); }
+
+        .no-users {
+          text-align: center;
+          font-size: 16px;
+          color: #666;
+          margin-top: 40px;
+        }
+
+        @media (max-width: 700px) {
+          .table th, .table td { padding: 10px; }
+          .header { flex-direction: column; gap: 12px; }
         }
       `}</style>
     </div>
